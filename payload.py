@@ -1,4 +1,3 @@
-import base64
 from dnslib import DNSRecord, DNSHeader, RR
 
 from dataEncryptor import dataEncryptor
