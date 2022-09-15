@@ -28,7 +28,6 @@ def greet():
 def main():
     host, port = getArgs()
     dns = DNSServer(port,host)
-    dns = DNSServer(port, host)
     greet()
     commands()
     choice = ""
